@@ -46,16 +46,19 @@ function loadConfig() {
 function handleRequest(req, res, body, config) {
   const { apiKey, baseUrl } = config.llm;
 
-  const targetUrl = new URL(baseUrl + req.url);
+  const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const reqPath = req.url.startsWith('/') ? req.url : '/' + req.url;
+  const targetUrl = new URL(base + reqPath);
+  const forwardedHeaders = Object.assign({}, req.headers, {
+    'Authorization': 'Bearer ' + apiKey,
+    'host': targetUrl.host,
+  });
   const options = {
     hostname: targetUrl.hostname,
     port: targetUrl.port || (targetUrl.protocol === 'https:' ? 443 : 80),
     path: targetUrl.pathname + targetUrl.search,
     method: req.method,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + apiKey,
-    },
+    headers: forwardedHeaders,
   };
 
   const transport = targetUrl.protocol === 'https:' ? https : http;
@@ -91,8 +94,20 @@ function startServer(config) {
       return;
     }
 
+const MAX_BODY_SIZE = 10 * 1024 * 1024; // 10 MB
+
     let body = '';
-    req.on('data', (chunk) => { body += chunk; });
+    let bodySize = 0;
+    req.on('data', (chunk) => {
+      bodySize += chunk.length;
+      if (bodySize > MAX_BODY_SIZE) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Payload Too Large' }));
+        req.destroy();
+        return;
+      }
+      body += chunk;
+    });
     req.on('end', () => {
       handleRequest(req, res, body, config);
     });

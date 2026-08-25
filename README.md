@@ -49,7 +49,7 @@ The proxy will start and listen on the host and port specified in the config (de
 
 Health check endpoint: `GET /health` — returns `{ "status": "ok" }`.
 
-## F.A.Q
+## FAQ
 
 **Q: The app exits immediately on first run.**  
 A: This is expected. On first run the config file is created from the template. Edit `apps/llm-coder-proxy.config.json` with your API key and other settings, then run the app again.
