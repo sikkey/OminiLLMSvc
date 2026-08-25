@@ -1,3 +1,5 @@
+*.config.json
+!template/**/*.config.json
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
