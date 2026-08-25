@@ -1,0 +1,20 @@
+{
+  "server": {
+    "port": 3000,
+    "host": "127.0.0.1"
+  },
+  "llm": {
+    "provider": "openai",
+    "apiKey": "",
+    "model": "gpt-4",
+    "baseUrl": "https://api.openai.com/v1"
+  },
+  "proxy": {
+    "enabled": false,
+    "url": ""
+  },
+  "logging": {
+    "level": "info",
+    "file": ""
+  }
+}
