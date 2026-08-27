@@ -1,5 +1,7 @@
 # OminiLLMSvc
 
+Language: [English](README.md) | [中文](README.zh-CN.md)
+
 ## Intro
 
 OminiLLMSvc provides a lightweight proxy service that adapts any application to work with Large Language Model (LLM) APIs. It forwards requests to your chosen LLM provider (e.g. OpenAI) and handles configuration management automatically.
@@ -64,6 +66,19 @@ node apps/llm-coder-proxy.js
 The proxy will start and listen on the host and port specified in the config (default: `http://127.0.0.1:7070`).
 
 Health check endpoint: `GET /health` — returns `{ "status": "ok" }`.
+
+## LLM Compatibility
+
+OminiLLMSvc is designed to work with OpenAI-compatible endpoints and common local model runtimes, including `llama.cpp`-style plugins and general-purpose models such as `gemma4` that are not specialized code-generation models.
+
+For compatibility, the proxy supports both standard chat access and a lightweight infill route:
+
+- `POST /v1/chat/completions` for chat-style use
+- `POST /infill` or `POST /v1/infill` for code completion / infill scenarios
+
+When a backend model does not expose a native infill API, OminiLLMSvc translates the request into a chat-completion prompt that asks the model to complete only the missing code between a prefix and suffix. This enables general models like `gemma4` to behave like a code completion assistant without requiring a dedicated coder model.
+
+This makes it useful for local runtimes and editor integrations that expect an OpenAI-compatible API surface but run non-coder general-purpose models.
 
 ## FAQ
 
