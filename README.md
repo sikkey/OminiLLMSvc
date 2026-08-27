@@ -16,6 +16,18 @@ cd OminiLLMSvc
 # No additional dependencies required — uses Node.js built-in modules only
 ```
 
+Run the platform-specific installer to initialize the app config from the template files without overwriting any existing custom settings:
+
+```bash
+# Windows
+install.bat
+
+# macOS / Linux
+bash install.sh
+```
+
+The installer copies any files from `template/config/` into `apps/config/` only when the target file does not already exist, so your custom configuration is preserved.
+
 ## Configuration
 
 The application uses a JSON config file located at `apps/config/llm-coder-proxy.config.json`.
