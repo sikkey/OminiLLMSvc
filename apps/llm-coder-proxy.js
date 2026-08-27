@@ -8,13 +8,18 @@ const http = require('http');
 const https = require('https');
 
 const APPS_DIR = __dirname;
-const CONFIG_FILE = path.join(APPS_DIR, 'llm-coder-proxy.config.json');
+const CONFIG_DIR = path.join(APPS_DIR, 'config');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'llm-coder-proxy.config.json');
 const TEMPLATE_CONFIG = path.join(APPS_DIR, '..', 'template', 'config', 'llm-coder-proxy.config.json');
 
 /**
  * Ensure the config file exists. If not, copy from the template.
  */
 function ensureConfig() {
+  if (!fs.existsSync(CONFIG_DIR)) {
+    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  }
+
   if (!fs.existsSync(CONFIG_FILE)) {
     if (!fs.existsSync(TEMPLATE_CONFIG)) {
       console.error('Template config not found:', TEMPLATE_CONFIG);
@@ -85,7 +90,8 @@ function handleRequest(req, res, body, config) {
  * @param {object} config
  */
 function startServer(config) {
-  const { host, port } = config.server;
+  const host = config.server && config.server.host ? config.server.host : '127.0.0.1';
+  const port = config.server && config.server.port ? config.server.port : 7070;
 
   const server = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/health') {

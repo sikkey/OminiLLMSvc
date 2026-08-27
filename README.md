@@ -18,16 +18,20 @@ cd OminiLLMSvc
 
 ## Configuration
 
-The application uses a JSON config file located at `apps/llm-coder-proxy.config.json`.
+The application uses a JSON config file located at `apps/config/llm-coder-proxy.config.json`.
 
-This file is **not tracked by git** (`*.config.json` is in `.gitignore`). On first run, the application will automatically copy the template from `template/config/llm-coder-proxy.config.json` to `apps/llm-coder-proxy.config.json` and then exit, prompting you to fill in your settings.
+This file is **not tracked by git** (`*.config.json` is in `.gitignore`). On first run, the application will automatically create the `apps/config` directory and copy the template from `template/config/llm-coder-proxy.config.json` to `apps/config/llm-coder-proxy.config.json`, then exit, prompting you to fill in your settings.
 
-Edit `apps/llm-coder-proxy.config.json` and set at minimum:
+```bash
+cp -r ./template/config/ ./apps/config/
+```
+
+Edit `apps/config/llm-coder-proxy.config.json` and set at minimum:
 
 ```json
 {
   "server": {
-    "port": 3000,
+    "port": 7070,
     "host": "127.0.0.1"
   },
   "llm": {
@@ -45,7 +49,7 @@ Edit `apps/llm-coder-proxy.config.json` and set at minimum:
 node apps/llm-coder-proxy.js
 ```
 
-The proxy will start and listen on the host and port specified in the config (default: `http://127.0.0.1:3000`).
+The proxy will start and listen on the host and port specified in the config (default: `http://127.0.0.1:7070`).
 
 Health check endpoint: `GET /health` — returns `{ "status": "ok" }`.
 
@@ -55,7 +59,7 @@ Health check endpoint: `GET /health` — returns `{ "status": "ok" }`.
 A: This is expected. On first run the config file is created from the template. Edit `apps/llm-coder-proxy.config.json` with your API key and other settings, then run the app again.
 
 **Q: Where is my config file stored?**  
-A: `apps/llm-coder-proxy.config.json`. This file is git-ignored so your API keys are never committed.
+A: `apps/config/llm-coder-proxy.config.json`. This file is git-ignored so your API keys are never committed.
 
 **Q: How do I change the LLM provider or model?**  
 A: Edit the `llm` section of your config file and update `provider`, `baseUrl`, and `model` as needed.
