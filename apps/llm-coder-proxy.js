@@ -48,12 +48,54 @@ function loadConfig() {
  * @param {string} body
  * @param {object} config
  */
+function parseJsonBody(rawBody) {
+  if (!rawBody) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(rawBody);
+  } catch (err) {
+    return {};
+  }
+}
+
+function normalizeInfillPayload(data, config) {
+  const prefix = data.input_prefix ?? data.prefix ?? data.prompt ?? data.input ?? '';
+  const suffix = data.input_suffix ?? data.suffix ?? '';
+  const maxTokens = Number(data.max_tokens ?? data.n_predict ?? 256);
+  const temperature = Number(data.temperature ?? 0.2);
+
+  const systemPrompt = 'You are completing the missing portion of source code. Return only the missing code, with no explanation, markdown fences, or surrounding text.';
+  const userPrompt = [
+    'Complete the missing code between the prefix and suffix.',
+    'Return only the missing code content.',
+    'Prefix:',
+    String(prefix),
+    'Suffix:',
+    String(suffix),
+  ].join('\n');
+
+  return JSON.stringify({
+    model: config.llm.model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    max_tokens: Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 256,
+    temperature: Number.isFinite(temperature) ? temperature : 0.2,
+  });
+}
+
 function handleRequest(req, res, body, config) {
   const { apiKey, baseUrl } = config.llm;
 
   const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   const reqPath = req.url.startsWith('/') ? req.url : '/' + req.url;
-  const targetUrl = new URL(base + reqPath);
+  const rawPath = reqPath.split('?')[0];
+  const isInfill = rawPath === '/infill' || rawPath === '/v1/infill';
+  const targetPath = isInfill ? '/v1/chat/completions' : reqPath;
+  const targetUrl = new URL(base + targetPath);
   const forwardedHeaders = Object.assign({}, req.headers, {
     'Authorization': 'Bearer ' + apiKey,
     'host': targetUrl.host,
@@ -69,6 +111,42 @@ function handleRequest(req, res, body, config) {
   const transport = targetUrl.protocol === 'https:' ? https : http;
 
   const proxyReq = transport.request(options, (proxyRes) => {
+    if (isInfill) {
+      let upstreamBody = '';
+      proxyRes.on('data', (chunk) => {
+        upstreamBody += chunk.toString();
+      });
+      proxyRes.on('end', () => {
+        try {
+          const parsed = JSON.parse(upstreamBody || '{}');
+          let content = '';
+
+          if (parsed && Array.isArray(parsed.choices) && parsed.choices[0]?.message?.content) {
+            content = parsed.choices[0].message.content;
+          } else if (parsed && Array.isArray(parsed.choices) && typeof parsed.choices[0]?.text === 'string') {
+            content = parsed.choices[0].text;
+          } else if (typeof parsed?.content === 'string') {
+            content = parsed.content;
+          } else if (typeof parsed?.output_text === 'string') {
+            content = parsed.output_text;
+          } else {
+            content = upstreamBody || '';
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            content,
+            model: config.llm.model,
+            ok: true,
+          }));
+        } catch (err) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Bad Gateway', message: err.message }));
+        }
+      });
+      return;
+    }
+
     res.writeHead(proxyRes.statusCode, proxyRes.headers);
     proxyRes.pipe(res, { end: true });
   });
@@ -80,7 +158,8 @@ function handleRequest(req, res, body, config) {
   });
 
   if (body) {
-    proxyReq.write(body);
+    const requestBody = isInfill ? normalizeInfillPayload(parseJsonBody(body), config) : body;
+    proxyReq.write(requestBody);
   }
   proxyReq.end();
 }
